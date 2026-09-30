@@ -1,0 +1,195 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  auth_id       String?   @unique
+  email         String    @unique
+  name          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  workspaces    WorkspaceUser[]
+}
+
+model Workspace {
+  id          String   @id @default(uuid())
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  users       WorkspaceUser[]
+  products    Product[]
+  prospects   Prospect[]
+  campaigns   Campaign[]
+  deals       Deal[]
+}
+
+model WorkspaceUser {
+  id          String    @id @default(uuid())
+  userId      String
+  workspaceId String
+  role        String    @default("MEMBER")
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+model Product {
+  id              String   @id @default(uuid())
+  workspaceId     String
+  name            String
+  description     String?
+  website         String?
+  pricing         String?
+  currency        String?
+  market          String?
+  problemSolved   String?
+  currentCustomers String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  icps            ICP[]
+  prospects       Prospect[]
+}
+
+model ICP {
+  id                String   @id @default(uuid())
+  productId         String
+  primarySegment    String
+  secondarySegments String?
+  companySize       String?
+  industry          String?
+  geography         String?
+  buyerRole         String?
+  painPoints        String?
+  buyingTriggers    String?
+  commonObjections  String?
+  score             Float?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  product           Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Prospect {
+  id          String   @id @default(uuid())
+  workspaceId String
+  productId   String?
+  companyName String
+  website     String?
+  industry    String?
+  location    String?
+  icpScore    Int?
+  status      String   @default("NEW") // NEW, CONTACTED, REPLIED, INTERESTED, DEMO, PROPOSAL, WON, LOST
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product     Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  
+  contacts    Contact[]
+  research    ProspectResearch[]
+  messages    OutreachMessage[]
+  followUps   FollowUp[]
+  activities  Activity[]
+  deal        Deal?
+}
+
+model Contact {
+  id          String   @id @default(uuid())
+  prospectId  String
+  name        String?
+  email       String?
+  phone       String?
+  role        String?
+  socialLinks String?  // JSON string or comma separated
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  prospect    Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+}
+
+model ProspectResearch {
+  id                      String   @id @default(uuid())
+  prospectId              String
+  companySummary          String?
+  possiblePainPoints      String?
+  relevantProductBenefit  String?
+  suggestedOpeningAngle   String?
+  likelyObjections        String?
+  recommendedCTA          String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  prospect                Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+}
+
+model OutreachMessage {
+  id          String   @id @default(uuid())
+  prospectId  String
+  channel     String   // EMAIL, LINKEDIN, etc.
+  objective   String
+  tone        String
+  content     String
+  status      String   @default("DRAFT") // DRAFT, SENT
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  prospect    Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+}
+
+model FollowUp {
+  id          String   @id @default(uuid())
+  prospectId  String
+  dueDate     DateTime
+  content     String?
+  status      String   @default("PENDING") // PENDING, COMPLETED, SKIPPED, SNOOZED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  prospect    Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+}
+
+model Deal {
+  id          String   @id @default(uuid())
+  workspaceId String
+  prospectId  String   @unique
+  value       Float?
+  status      String   @default("OPEN") // OPEN, WON, LOST
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  prospect    Prospect  @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+}
+
+model Activity {
+  id          String   @id @default(uuid())
+  prospectId  String
+  type        String   // CREATED, RESEARCHED, MESSAGE_SENT, STATUS_CHANGED, etc.
+  description String
+  createdAt   DateTime @default(now())
+
+  prospect    Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+}
+
+model Campaign {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  status      String   @default("DRAFT")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
