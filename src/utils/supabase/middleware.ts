@@ -11,6 +11,11 @@ export const updateSession = async (request: NextRequest) => {
     },
   });
 
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Supabase environment variables are missing. Middleware cannot run.");
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(
     supabaseUrl!,
     supabaseKey!,
